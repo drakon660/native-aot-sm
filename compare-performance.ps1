@@ -74,17 +74,20 @@ $javaGraalMetrics = $null
 $javaGraalPid = 0
 
 function Get-MemoryMetrics {
-    param([System.Diagnostics.Process]$Process)
+    param([int]$ProcessId)
+
+    # Get metrics from CIM (Windows Performance Counters)
+    $cimProcess = Get-CimInstance -Class Win32_PerfFormattedData_PerfProc_Process -ErrorAction SilentlyContinue |
+        Where-Object { $_.IDProcess -eq $ProcessId } |
+        Select-Object -First 1
+
+    if (-not $cimProcess) {
+        return $null
+    }
 
     return [PSCustomObject]@{
-        PrivateMemory = [math]::Round($Process.PrivateMemorySize64 / 1MB, 2)
-        WorkingSet = [math]::Round($Process.WorkingSet64 / 1MB, 2)
-        VirtualMemory = [math]::Round($Process.VirtualMemorySize64 / 1MB, 2)
-        PagedMemory = [math]::Round($Process.PagedMemorySize64 / 1MB, 2)
-        NonPagedMemory = [math]::Round($Process.NonpagedSystemMemorySize64 / 1KB, 2)
-        PeakWorkingSet = [math]::Round($Process.PeakWorkingSet64 / 1MB, 2)
-        PeakVirtualMemory = [math]::Round($Process.PeakVirtualMemorySize64 / 1MB, 2)
-        PeakPagedMemory = [math]::Round($Process.PeakPagedMemorySize64 / 1MB, 2)
+        PrivateBytes = [math]::Round($cimProcess.PrivateBytes / 1MB, 2)
+        WorkingSetPrivate = [math]::Round($cimProcess.WorkingSetPrivate / 1MB, 2)
     }
 }
 
@@ -92,18 +95,11 @@ if ($standardAvailable) {
     try {
         $result = Invoke-RestMethod -Uri "$StandardUrl/benchmark" -ErrorAction SilentlyContinue
         $standardPid = $result.processId
-        $process = Get-Process -Id $result.processId -ErrorAction SilentlyContinue
-        if ($process) {
-            $standardMetrics = Get-MemoryMetrics -Process $process
+        $standardMetrics = Get-MemoryMetrics -ProcessId $standardPid
+        if ($standardMetrics) {
             Write-Host "  Standard API (PID: $standardPid)" -ForegroundColor Cyan
-            Write-Host "    Private Memory:     $($standardMetrics.PrivateMemory) MB" -ForegroundColor Gray
-            Write-Host "    Working Set:        $($standardMetrics.WorkingSet) MB" -ForegroundColor Gray
-            Write-Host "    Virtual Memory:     $($standardMetrics.VirtualMemory) MB" -ForegroundColor Gray
-            Write-Host "    Paged Memory:       $($standardMetrics.PagedMemory) MB" -ForegroundColor Gray
-            Write-Host "    Non-Paged Memory:   $($standardMetrics.NonPagedMemory) KB" -ForegroundColor Gray
-            Write-Host "    Peak Working Set:   $($standardMetrics.PeakWorkingSet) MB" -ForegroundColor Gray
-            Write-Host "    Peak Virtual:       $($standardMetrics.PeakVirtualMemory) MB" -ForegroundColor Gray
-            Write-Host "    Peak Paged:         $($standardMetrics.PeakPagedMemory) MB" -ForegroundColor Gray
+            Write-Host "    Private Bytes:         $($standardMetrics.PrivateBytes) MB" -ForegroundColor Gray
+            Write-Host "    Working Set Private:   $($standardMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
             Write-Host ""
         }
     } catch {}
@@ -113,18 +109,11 @@ if ($aotAvailable) {
     try {
         $result = Invoke-RestMethod -Uri "$AotUrl/benchmark" -ErrorAction SilentlyContinue
         $aotPid = $result.processId
-        $process = Get-Process -Id $result.processId -ErrorAction SilentlyContinue
-        if ($process) {
-            $aotMetrics = Get-MemoryMetrics -Process $process
+        $aotMetrics = Get-MemoryMetrics -ProcessId $aotPid
+        if ($aotMetrics) {
             Write-Host "  AOT API (PID: $aotPid)" -ForegroundColor Cyan
-            Write-Host "    Private Memory:     $($aotMetrics.PrivateMemory) MB" -ForegroundColor Gray
-            Write-Host "    Working Set:        $($aotMetrics.WorkingSet) MB" -ForegroundColor Gray
-            Write-Host "    Virtual Memory:     $($aotMetrics.VirtualMemory) MB" -ForegroundColor Gray
-            Write-Host "    Paged Memory:       $($aotMetrics.PagedMemory) MB" -ForegroundColor Gray
-            Write-Host "    Non-Paged Memory:   $($aotMetrics.NonPagedMemory) KB" -ForegroundColor Gray
-            Write-Host "    Peak Working Set:   $($aotMetrics.PeakWorkingSet) MB" -ForegroundColor Gray
-            Write-Host "    Peak Virtual:       $($aotMetrics.PeakVirtualMemory) MB" -ForegroundColor Gray
-            Write-Host "    Peak Paged:         $($aotMetrics.PeakPagedMemory) MB" -ForegroundColor Gray
+            Write-Host "    Private Bytes:         $($aotMetrics.PrivateBytes) MB" -ForegroundColor Gray
+            Write-Host "    Working Set Private:   $($aotMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
             Write-Host ""
         }
     } catch {}
@@ -134,18 +123,11 @@ if ($javaGraalAvailable) {
     try {
         $result = Invoke-RestMethod -Uri "$JavaGraalUrl/benchmark" -ErrorAction SilentlyContinue
         $javaGraalPid = $result.processId
-        $process = Get-Process -Id $result.processId -ErrorAction SilentlyContinue
-        if ($process) {
-            $javaGraalMetrics = Get-MemoryMetrics -Process $process
+        $javaGraalMetrics = Get-MemoryMetrics -ProcessId $javaGraalPid
+        if ($javaGraalMetrics) {
             Write-Host "  Java GraalVM API (PID: $javaGraalPid)" -ForegroundColor Cyan
-            Write-Host "    Private Memory:     $($javaGraalMetrics.PrivateMemory) MB" -ForegroundColor Gray
-            Write-Host "    Working Set:        $($javaGraalMetrics.WorkingSet) MB" -ForegroundColor Gray
-            Write-Host "    Virtual Memory:     $($javaGraalMetrics.VirtualMemory) MB" -ForegroundColor Gray
-            Write-Host "    Paged Memory:       $($javaGraalMetrics.PagedMemory) MB" -ForegroundColor Gray
-            Write-Host "    Non-Paged Memory:   $($javaGraalMetrics.NonPagedMemory) KB" -ForegroundColor Gray
-            Write-Host "    Peak Working Set:   $($javaGraalMetrics.PeakWorkingSet) MB" -ForegroundColor Gray
-            Write-Host "    Peak Virtual:       $($javaGraalMetrics.PeakVirtualMemory) MB" -ForegroundColor Gray
-            Write-Host "    Peak Paged:         $($javaGraalMetrics.PeakPagedMemory) MB" -ForegroundColor Gray
+            Write-Host "    Private Bytes:         $($javaGraalMetrics.PrivateBytes) MB" -ForegroundColor Gray
+            Write-Host "    Working Set Private:   $($javaGraalMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
             Write-Host ""
         }
     } catch {}
@@ -162,7 +144,7 @@ if ($standardAvailable) {
         try {
             $response = Invoke-RestMethod -Uri "$StandardUrl/users"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($standardMetrics.PrivateMemory) MB | WS: $($standardMetrics.WorkingSet) MB" -ForegroundColor Gray
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($standardMetrics.PrivateBytes) MB | WSP: $($standardMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -178,7 +160,7 @@ if ($aotAvailable) {
         try {
             $response = Invoke-RestMethod -Uri "$AotUrl/users"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($aotMetrics.PrivateMemory) MB | WS: $($aotMetrics.WorkingSet) MB" -ForegroundColor Gray
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($aotMetrics.PrivateBytes) MB | WSP: $($aotMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -194,7 +176,7 @@ if ($javaGraalAvailable) {
         try {
             $response = Invoke-RestMethod -Uri "$JavaGraalUrl/users"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($javaGraalMetrics.PrivateMemory) MB | WS: $($javaGraalMetrics.WorkingSet) MB" -ForegroundColor Gray
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($javaGraalMetrics.PrivateBytes) MB | WSP: $($javaGraalMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -214,7 +196,7 @@ if ($standardAvailable) {
         try {
             $result = Invoke-RestMethod -Uri "$StandardUrl/benchmark"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($standardMetrics.PrivateMemory) MB | WS: $($standardMetrics.WorkingSet) MB" -ForegroundColor Gray
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($standardMetrics.PrivateBytes) MB | WSP: $($standardMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -230,7 +212,7 @@ if ($aotAvailable) {
         try {
             $result = Invoke-RestMethod -Uri "$AotUrl/benchmark"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($aotMetrics.PrivateMemory) MB | WS: $($aotMetrics.WorkingSet) MB" -ForegroundColor Gray
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($aotMetrics.PrivateBytes) MB | WSP: $($aotMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -246,7 +228,7 @@ if ($javaGraalAvailable) {
         try {
             $result = Invoke-RestMethod -Uri "$JavaGraalUrl/benchmark"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($javaGraalMetrics.PrivateMemory) MB | WS: $($javaGraalMetrics.WorkingSet) MB" -ForegroundColor Gray
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($javaGraalMetrics.PrivateBytes) MB | WSP: $($javaGraalMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
