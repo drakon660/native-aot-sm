@@ -10,4 +10,19 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0-rc.1.25451.107" />
   </ItemGroup>
 
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="publish\publish\web.config" />
+    <_ContentIncludedByDefault Remove="publish\web.config" />
+    <_ContentIncludedByDefault Remove="publish\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\publish\appsettings.Development.json" />
+    <_ContentIncludedByDefault Remove="publish\publish\appsettings.json" />
+    <_ContentIncludedByDefault Remove="publish\publish\StandardMinimalApi.deps.json" />
+    <_ContentIncludedByDefault Remove="publish\publish\StandardMinimalApi.runtimeconfig.json" />
+    <_ContentIncludedByDefault Remove="publish\publish\StandardMinimalApi.staticwebassets.endpoints.json" />
+    <_ContentIncludedByDefault Remove="publish\StandardMinimalApi.deps.json" />
+    <_ContentIncludedByDefault Remove="publish\StandardMinimalApi.runtimeconfig.json" />
+    <_ContentIncludedByDefault Remove="publish\StandardMinimalApi.staticwebassets.endpoints.json" />
+  </ItemGroup>
+
 </Project>
