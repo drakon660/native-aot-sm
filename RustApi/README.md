@@ -41,18 +41,18 @@ cargo run
 cargo run --release
 ```
 
-The server will start on `http://0.0.0.0:5000`
+The server will start on `http://127.0.0.1:5003`
 
 ## Testing the API
 
 ### Test /users endpoint
 ```bash
-curl http://localhost:5000/users
+curl http://localhost:5003/users
 ```
 
 ### Test /benchmark endpoint
 ```bash
-curl http://localhost:5000/benchmark
+curl http://localhost:5003/benchmark
 ```
 
 ## Performance Notes
@@ -67,5 +67,5 @@ curl http://localhost:5000/benchmark
 This Rust API provides functionally equivalent endpoints to the .NET Native AOT Minimal API:
 - Same data structures and JSON response format
 - Same prime number calculation algorithm
-- Same 10,000 user generation logic
+- Identical 10,000 user dataset generated at startup for consistent responses
 - Comparable performance characteristics
