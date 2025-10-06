@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cargo:*)"
+      "Bash(cargo:*)",
+      "Bash(powershell:*)",
+      "Bash(timeout 10 bash -c 'until curl -s http://localhost:5003/users > /dev/null 2>&1; do sleep 0.5; done')",
+      "Bash(curl:*)",
+      "Bash(Get-ChildItem -Path \"F:\\src\\native-aot-sm\" -Directory)",
+      "Bash(Where-Object { $_ame -eq \"RustApi\" })",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ],
     "deny": [],
     "ask": []

@@ -115,10 +115,8 @@ app.MapGet("/benchmark", () =>
 
     return new BenchmarkResult
     {
-        ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
         PrimesFound = primesCount,
         ProcessId = Environment.ProcessId,
-        WorkingSetMB = Environment.WorkingSet / (1024.0 * 1024.0)
     };
 })
 .WithName("Benchmark");
@@ -127,10 +125,8 @@ app.Run();
 
 record BenchmarkResult
 {
-    public long ExecutionTimeMs { get; init; }
     public int PrimesFound { get; init; }
     public int ProcessId { get; init; }
-    public double WorkingSetMB { get; init; }
 }
 
 record User

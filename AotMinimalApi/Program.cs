@@ -140,10 +140,8 @@ public class Program
 
             return new BenchmarkResult
             {
-                ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
                 PrimesFound = primesCount,
                 ProcessId = Environment.ProcessId,
-                WorkingSetMB = Environment.WorkingSet / (1024.0 * 1024.0)
             };
         })
         .WithName("Benchmark");
@@ -154,10 +152,8 @@ public class Program
 
 public class BenchmarkResult
 {
-    public long ExecutionTimeMs { get; set; }
     public int PrimesFound { get; set; }
     public int ProcessId { get; set; }
-    public double WorkingSetMB { get; set; }
 }
 
 public class User

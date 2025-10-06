@@ -107,9 +107,7 @@ public class ApiController {
 
     @GetMapping("/benchmark")
     public BenchmarkResult benchmark() {
-        long startTime = System.currentTimeMillis();
-
-        // CPU-intensive task: Calculate prime numbers
+             // CPU-intensive task: Calculate prime numbers
         List<Long> primes = new ArrayList<>();
         for (int i = 2; i < 1000000; i++) {
             boolean isPrime = true;
@@ -124,18 +122,10 @@ public class ApiController {
             }
         }
 
-        long executionTime = System.currentTimeMillis() - startTime;
-
-        // Get process working set memory (equivalent to C# Environment.WorkingSet)
-        // Using Runtime for simpler memory calculation that works in native image
-        Runtime runtime = Runtime.getRuntime();
-        double workingSetMB = (runtime.totalMemory() - runtime.freeMemory()) / (1024.0 * 1024.0);
-
         BenchmarkResult result = new BenchmarkResult();
-        result.setExecutionTimeMs(executionTime);
         result.setPrimesFound(primes.size());
         result.setProcessId(ProcessHandle.current().pid());
-        result.setWorkingSetMB(workingSetMB);
+      
 
         return result;
     }
