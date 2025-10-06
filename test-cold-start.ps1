@@ -14,9 +14,10 @@ Write-Host "This test measures how quickly each API starts from scratch." -Foreg
 Write-Host "Iterations: $Iterations" -ForegroundColor White
 Write-Host ""
 
-# Make sure both APIs are built
+# Make sure all APIs are built
 $standardPath = Join-Path $publishPath "StandardMinimalApi"
 $aotPath = Join-Path $publishPath "AotMinimalApi"
+$javaGraalPath = Join-Path $rootPath "SpringBootGraalVM\build\native\nativeCompile"
 
 if (-not (Test-Path $standardPath)) {
     Write-Host "StandardMinimalApi not found. Building..." -ForegroundColor Yellow
@@ -26,6 +27,12 @@ if (-not (Test-Path $standardPath)) {
 if (-not (Test-Path $aotPath)) {
     Write-Host "AotMinimalApi not found. Building..." -ForegroundColor Yellow
     & pwsh -File "$rootPath\build-and-run.ps1" -Project aot -Configuration $Configuration
+}
+
+if (-not (Test-Path (Join-Path $javaGraalPath "spring-boot-graalvm.exe"))) {
+    Write-Host "Java GraalVM native image not found. Please build it first with:" -ForegroundColor Yellow
+    Write-Host "  cd SpringBootGraalVM && .\build-gradle.bat" -ForegroundColor White
+    $javaGraalPath = $null
 }
 
 Write-Host ""
@@ -127,6 +134,19 @@ $aotTimes = Measure-ColdStart `
     -Url "http://localhost:5001" `
     -Port 5001
 
+# Test Java GraalVM API
+if ($javaGraalPath) {
+    Write-Host "=== Java GraalVM Native Image Cold Start ===" -ForegroundColor Yellow
+    $javaGraalTimes = Measure-ColdStart `
+        -Name "Java GraalVM API" `
+        -Path $javaGraalPath `
+        -Executable "spring-boot-graalvm.exe" `
+        -Url "http://localhost:5002" `
+        -Port 5002
+} else {
+    $javaGraalTimes = @()
+}
+
 # Calculate statistics
 Write-Host "=== Cold Start Results ===" -ForegroundColor Cyan
 Write-Host ""
@@ -149,7 +169,7 @@ if ($aotTimes.Count -gt 0) {
     $aotMin = ($aotTimes | Measure-Object -Minimum).Minimum
     $aotMax = ($aotTimes | Measure-Object -Maximum).Maximum
 
-    Write-Host "Native AOT API:" -ForegroundColor Yellow
+    Write-Host "C# Native AOT API:" -ForegroundColor Yellow
     Write-Host "  Average: $([math]::Round($aotAvg, 2)) ms" -ForegroundColor White
     Write-Host "  Min:     $aotMin ms" -ForegroundColor White
     Write-Host "  Max:     $aotMax ms" -ForegroundColor White
@@ -157,32 +177,92 @@ if ($aotTimes.Count -gt 0) {
     Write-Host ""
 }
 
-# Comparison
-if ($standardTimes.Count -gt 0 -and $aotTimes.Count -gt 0) {
-    Write-Host "=== Comparison ===" -ForegroundColor Cyan
-    Write-Host ""
+if ($javaGraalTimes.Count -gt 0) {
+    $javaGraalAvg = ($javaGraalTimes | Measure-Object -Average).Average
+    $javaGraalMin = ($javaGraalTimes | Measure-Object -Minimum).Minimum
+    $javaGraalMax = ($javaGraalTimes | Measure-Object -Maximum).Maximum
 
+    Write-Host "Java GraalVM Native Image:" -ForegroundColor Yellow
+    Write-Host "  Average: $([math]::Round($javaGraalAvg, 2)) ms" -ForegroundColor White
+    Write-Host "  Min:     $javaGraalMin ms" -ForegroundColor White
+    Write-Host "  Max:     $javaGraalMax ms" -ForegroundColor White
+    Write-Host "  All:     $($javaGraalTimes -join ', ') ms" -ForegroundColor Gray
+    Write-Host ""
+}
+
+# Comparison
+Write-Host "=== Comparison ===" -ForegroundColor Cyan
+Write-Host ""
+
+if ($standardTimes.Count -gt 0 -and $aotTimes.Count -gt 0) {
     $speedup = [math]::Round(($standardAvg / $aotAvg), 2)
     $improvement = [math]::Round((($standardAvg - $aotAvg) / $standardAvg * 100), 2)
 
+    Write-Host "C# AOT vs C# Standard:" -ForegroundColor White
     if ($aotAvg -lt $standardAvg) {
-        Write-Host "Native AOT is ${speedup}x faster" -ForegroundColor Green
-        Write-Host "Cold start improvement: ${improvement}%" -ForegroundColor Green
-        Write-Host "Time saved per cold start: $([math]::Round($standardAvg - $aotAvg, 2)) ms" -ForegroundColor Green
+        Write-Host "  AOT is ${speedup}x faster" -ForegroundColor Green
+        Write-Host "  Cold start improvement: ${improvement}%" -ForegroundColor Green
+        Write-Host "  Time saved: $([math]::Round($standardAvg - $aotAvg, 2)) ms" -ForegroundColor Green
     } else {
-        Write-Host "Standard is $([math]::Round($aotAvg / $standardAvg, 2))x faster" -ForegroundColor Yellow
+        Write-Host "  Standard is $([math]::Round($aotAvg / $standardAvg, 2))x faster" -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+if ($standardTimes.Count -gt 0 -and $javaGraalTimes.Count -gt 0) {
+    $speedup = [math]::Round(($standardAvg / $javaGraalAvg), 2)
+    $improvement = [math]::Round((($standardAvg - $javaGraalAvg) / $standardAvg * 100), 2)
+
+    Write-Host "Java GraalVM vs C# Standard:" -ForegroundColor White
+    if ($javaGraalAvg -lt $standardAvg) {
+        Write-Host "  Java GraalVM is ${speedup}x faster" -ForegroundColor Green
+        Write-Host "  Cold start improvement: ${improvement}%" -ForegroundColor Green
+        Write-Host "  Time saved: $([math]::Round($standardAvg - $javaGraalAvg, 2)) ms" -ForegroundColor Green
+    } else {
+        Write-Host "  Standard is $([math]::Round($javaGraalAvg / $standardAvg, 2))x faster" -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+if ($aotTimes.Count -gt 0 -and $javaGraalTimes.Count -gt 0) {
+    $speedup = [math]::Round(($aotAvg / $javaGraalAvg), 2)
+    $improvement = [math]::Round((($aotAvg - $javaGraalAvg) / $aotAvg * 100), 2)
+
+    Write-Host "Java GraalVM vs C# AOT:" -ForegroundColor White
+    if ($javaGraalAvg -lt $aotAvg) {
+        Write-Host "  Java GraalVM is ${speedup}x faster" -ForegroundColor Green
+        Write-Host "  Cold start improvement: ${improvement}%" -ForegroundColor Green
+        Write-Host "  Time saved: $([math]::Round($aotAvg - $javaGraalAvg, 2)) ms" -ForegroundColor Green
+    } else {
+        Write-Host "  C# AOT is $([math]::Round($javaGraalAvg / $aotAvg, 2))x faster" -ForegroundColor Yellow
+    }
+    Write-Host ""
+}
+
+# Chart
+Write-Host "Visual Comparison:" -ForegroundColor White
+$allAvgs = @()
+if ($standardTimes.Count -gt 0) { $allAvgs += $standardAvg }
+if ($aotTimes.Count -gt 0) { $allAvgs += $aotAvg }
+if ($javaGraalTimes.Count -gt 0) { $allAvgs += $javaGraalAvg }
+
+if ($allAvgs.Count -gt 0) {
+    $maxTime = ($allAvgs | Measure-Object -Maximum).Maximum
+
+    if ($standardTimes.Count -gt 0) {
+        $standardBar = "█" * [math]::Floor(($standardAvg / $maxTime) * 50)
+        Write-Host "  C# Standard:    $standardBar $([math]::Round($standardAvg, 0)) ms" -ForegroundColor Cyan
     }
 
-    Write-Host ""
+    if ($aotTimes.Count -gt 0) {
+        $aotBar = "█" * [math]::Floor(($aotAvg / $maxTime) * 50)
+        Write-Host "  C# AOT:         $aotBar $([math]::Round($aotAvg, 0)) ms" -ForegroundColor Green
+    }
 
-    # Chart
-    Write-Host "Visual Comparison:" -ForegroundColor White
-    $maxTime = [math]::Max($standardAvg, $aotAvg)
-    $standardBar = "█" * [math]::Floor(($standardAvg / $maxTime) * 50)
-    $aotBar = "█" * [math]::Floor(($aotAvg / $maxTime) * 50)
-
-    Write-Host "  Standard: $standardBar $([math]::Round($standardAvg, 0)) ms" -ForegroundColor Cyan
-    Write-Host "  AOT:      $aotBar $([math]::Round($aotAvg, 0)) ms" -ForegroundColor Green
+    if ($javaGraalTimes.Count -gt 0) {
+        $javaGraalBar = "█" * [math]::Floor(($javaGraalAvg / $maxTime) * 50)
+        Write-Host "  Java GraalVM:   $javaGraalBar $([math]::Round($javaGraalAvg, 0)) ms" -ForegroundColor Magenta
+    }
 }
 
 Write-Host ""

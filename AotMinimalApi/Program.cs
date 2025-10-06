@@ -24,21 +24,9 @@ public class Program
         {
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
         });
-
-        // Add services only if needed for development
-        if (builder.Environment.IsDevelopment())
-        {
-            builder.Services.AddOpenApi();
-        }
-
+        
         var app = builder.Build();
-
-        // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
-        {
-            app.MapOpenApi();
-        }
-
+        
         // Disable HTTPS redirection for this demo
         // app.UseHttpsRedirection();
 
@@ -133,7 +121,7 @@ public class Program
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
             // CPU-intensive task: Calculate prime numbers
-            var primes = new List<long>();
+            int primesCount = 0;
             for (var i = 2; i < 1000_000; i++)
             {
                 bool isPrime = true;
@@ -145,7 +133,7 @@ public class Program
                         break;
                     }
                 }
-                if (isPrime) primes.Add(i);
+                if (isPrime) primesCount++;
             }
 
             stopwatch.Stop();
@@ -153,7 +141,7 @@ public class Program
             return new BenchmarkResult
             {
                 ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
-                PrimesFound = primes.Count,
+                PrimesFound = primesCount,
                 ProcessId = Environment.ProcessId,
                 WorkingSetMB = Environment.WorkingSet / (1024.0 * 1024.0)
             };

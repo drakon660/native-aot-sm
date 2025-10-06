@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.4.0'
+    id 'io.spring.dependency-management' version '1.1.6'
+    id 'org.graalvm.buildtools.native' version '0.10.3'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// GraalVM Native Image configuration
+graalvmNative {
+    binaries {
+        main {
+            imageName = 'spring-boot-graalvm'
+            mainClass = 'com.example.springbootgraalvm.SpringBootGraalvmApplication'
+            buildArgs.add('--verbose')
+            buildArgs.add('-H:+ReportExceptionStackTraces')
+
+            // Optimization flags
+            buildArgs.add('-O3')
+            buildArgs.add('--gc=serial')
+        }
+    }
+}
+
+// Bootable JAR configuration
+springBoot {
+    mainClass = 'com.example.springbootgraalvm.SpringBootGraalvmApplication'
+}

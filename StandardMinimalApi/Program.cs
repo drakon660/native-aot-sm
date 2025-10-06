@@ -2,18 +2,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-// Disable HTTPS redirection for this demo
-// app.UseHttpsRedirection();
 
 app.MapGet("/users", () =>
 {
@@ -106,7 +96,7 @@ app.MapGet("/benchmark", () =>
     var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
     // CPU-intensive task: Calculate prime numbers
-    var primes = new List<long>();
+    int primesCount = 0;
     for (var i = 2; i < 1000_000; i++)
     {
         bool isPrime = true;
@@ -118,7 +108,7 @@ app.MapGet("/benchmark", () =>
                 break;
             }
         }
-        if (isPrime) primes.Add(i);
+        if (isPrime) primesCount++;
     }
 
     stopwatch.Stop();
@@ -126,7 +116,7 @@ app.MapGet("/benchmark", () =>
     return new BenchmarkResult
     {
         ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
-        PrimesFound = primes.Count,
+        PrimesFound = primesCount,
         ProcessId = Environment.ProcessId,
         WorkingSetMB = Environment.WorkingSet / (1024.0 * 1024.0)
     };

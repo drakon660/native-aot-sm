@@ -148,17 +148,24 @@ switch ($choice) {
                 & dotnet StandardMinimalApi.dll
             } -ArgumentList $standardPath
 
-            Start-Sleep -Seconds 2
+            # Wait for API to start (with retry)
+            $maxRetries = 10
+            $retryCount = 0
+            $standardPid = 0
 
-            # Check if API is responding
-            try {
-                $response = Invoke-WebRequest -Uri "http://localhost:5000/users" -TimeoutSec 2 -ErrorAction SilentlyContinue
-                if ($response.StatusCode -eq 200) {
-                    Write-Host "  [OK] StandardMinimalApi running on http://localhost:5000 (Job ID: $($standardJob.Id))" -ForegroundColor Green
-                } else {
-                    Write-Host "  [WARNING] StandardMinimalApi may not be ready yet (Job ID: $($standardJob.Id))" -ForegroundColor Yellow
+            while ($retryCount -lt $maxRetries) {
+                Start-Sleep -Milliseconds 500
+                try {
+                    $response = Invoke-RestMethod -Uri "http://localhost:5000/benchmark" -TimeoutSec 2 -ErrorAction Stop
+                    $standardPid = $response.processId
+                    Write-Host "  [OK] StandardMinimalApi running on http://localhost:5000 (PID: $standardPid, Job ID: $($standardJob.Id))" -ForegroundColor Green
+                    break
+                } catch {
+                    $retryCount++
                 }
-            } catch {
+            }
+
+            if ($standardPid -eq 0) {
                 if ($standardJob.State -eq "Running") {
                     Write-Host "  [WARNING] StandardMinimalApi starting... (Job ID: $($standardJob.Id))" -ForegroundColor Yellow
                 } else {
@@ -181,17 +188,24 @@ switch ($choice) {
                 & .\AotMinimalApi.exe
             } -ArgumentList $aotPath
 
-            Start-Sleep -Seconds 2
+            # Wait for API to start (with retry)
+            $maxRetries = 10
+            $retryCount = 0
+            $aotPid = 0
 
-            # Check if API is responding
-            try {
-                $response = Invoke-WebRequest -Uri "http://localhost:5001/users" -TimeoutSec 2 -ErrorAction SilentlyContinue
-                if ($response.StatusCode -eq 200) {
-                    Write-Host "  [OK] AotMinimalApi running on http://localhost:5001 (Job ID: $($aotJob.Id))" -ForegroundColor Green
-                } else {
-                    Write-Host "  [WARNING] AotMinimalApi may not be ready yet (Job ID: $($aotJob.Id))" -ForegroundColor Yellow
+            while ($retryCount -lt $maxRetries) {
+                Start-Sleep -Milliseconds 500
+                try {
+                    $response = Invoke-RestMethod -Uri "http://localhost:5001/benchmark" -TimeoutSec 2 -ErrorAction Stop
+                    $aotPid = $response.processId
+                    Write-Host "  [OK] AotMinimalApi running on http://localhost:5001 (PID: $aotPid, Job ID: $($aotJob.Id))" -ForegroundColor Green
+                    break
+                } catch {
+                    $retryCount++
                 }
-            } catch {
+            }
+
+            if ($aotPid -eq 0) {
                 if ($aotJob.State -eq "Running") {
                     Write-Host "  [WARNING] AotMinimalApi starting... (Job ID: $($aotJob.Id))" -ForegroundColor Yellow
                 } else {
