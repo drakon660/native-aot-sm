@@ -103,3 +103,11 @@ build/
 *.ear
 hs_err_pid*
 .gradletasknamecache
+
+# Rust
+**/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+# Uncomment if you want to include Cargo.lock for applications
+# !Cargo.lock
