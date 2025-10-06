@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Native AOT Configuration -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+
+    <!-- Optimization settings for Native AOT -->
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <IlcOptimizationPreference>Speed</IlcOptimizationPreference>
+    <IlcGenerateStackTraceData>false</IlcGenerateStackTraceData>
+
+    <!-- Enable aggressive optimizations -->
+    <IlcInstructionSet>native</IlcInstructionSet>
+    <IlcOptLevel>O3</IlcOptLevel>
+
+    <!-- Size optimization (comment out if you prefer speed over size) -->
+     <IlcOptimizationPreference>Speed</IlcOptimizationPreference> 
+
+    <!-- Additional trimming for smaller size -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>full</TrimMode>
+
+    <!-- Remove debug symbols for production -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+
+    <!-- Disable tiered compilation for AOT (not applicable) -->
+    <TieredCompilation>false</TieredCompilation>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+
+    <!-- Additional performance settings -->
+    <Optimize>true</Optimize>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+
+    <!-- Enable ready-to-run for faster startup -->
+    <PublishReadyToRun>false</PublishReadyToRun> <!-- Not needed with AOT -->
+
+    <!-- Self-contained deployment -->
+    <SelfContained>true</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0-rc.1.25451.107" />
+  </ItemGroup>
+
+</Project>
