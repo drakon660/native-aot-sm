@@ -1,0 +1,54 @@
+timeline
+    title .NET Native Compilation Evolution
+    
+    2002 : NGEN (.NET Framework)
+         : Pre-compiles assemblies to native code
+         : R2R format with IL fallback
+         : Windows only
+    
+    2014 : .NET Native (UWP)
+         : Full AOT for Windows Store apps
+         : First production full AOT
+         : No JIT compiler
+         : Used for Universal Windows Platform
+    
+    2016 : CoreRT (Experimental)
+         : Research project for .NET Core
+         : Cross-platform AOT exploration
+         : Never reached production
+    
+    2017 : CrossGen (.NET Core 2.0)
+         : NGEN successor for .NET Core
+         : ReadyToRun (R2R) images
+         : Cross-platform support
+    
+    2020 : CrossGen2 (.NET 5)
+         : Rewritten in C# (from C++)
+         : Improved R2R compilation
+         : Better performance
+    
+    2022 : Native AOT (.NET 7 - November)
+         : Preview feature - full AOT
+         : Primarily for console applications
+         : Builds on CoreRT learnings
+         : Cross-platform: Windows/Linux/macOS
+    
+    2023 : Native AOT production-ready (.NET 8 - November)
+         : Production-ready with official support
+         : ASP.NET Core: Minimal APIs support
+         : gRPC services with AOT compilation
+         : Worker Service: AOT-compatible templates
+         : Broader library compatibility
+    
+    2024 : Native AOT maturity (.NET 9 - November)
+         : .NET MAUI AOT: iOS/Mac Catalyst support
+         : 2.5x smaller apps, 2x faster startup
+         : *SignalR
+         : OpenApi
+         : UWP preview: .NET 9 + Native AOT support
+         : Generic parameters in UnsafeAccessor
+         : Thread-local storage optimization
+         : Feature switches with trimming
+         : Faster exceptions from NativeAOT model
+    
+    2025 : .NET 10 (November): Type preinitializer supports conv.* and neg opcodes for casting/negation preinitializationmer

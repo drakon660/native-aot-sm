@@ -2,11 +2,12 @@ param(
     [string]$StandardUrl = "http://localhost:5000",
     [string]$AotUrl = "http://localhost:5001",
     [string]$JavaGraalUrl = "http://localhost:5002",
+    [string]$RustUrl = "http://localhost:5003",
     [int]$WarmupRequests = 5,
     [int]$TestRequests = 20
 )
 
-Write-Host "=== Comprehensive Performance Comparison: Standard vs Native AOT vs Java GraalVM ===" -ForegroundColor Cyan
+Write-Host "=== Comprehensive Performance Comparison: Standard vs Native AOT vs Java GraalVM vs Rust ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Check if APIs are running
@@ -14,6 +15,7 @@ Write-Host "Checking API availability..." -ForegroundColor Yellow
 $standardAvailable = $false
 $aotAvailable = $false
 $javaGraalAvailable = $false
+$rustAvailable = $false
 
 try {
     $response = Invoke-WebRequest -Uri "$StandardUrl/users" -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
@@ -48,7 +50,18 @@ try {
     Write-Host "    Error: $($_.Exception.Message)" -ForegroundColor Gray
 }
 
-if (-not $standardAvailable -and -not $aotAvailable -and -not $javaGraalAvailable) {
+try {
+    $response = Invoke-WebRequest -Uri "$RustUrl/users" -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
+    if ($response.StatusCode -eq 200) {
+        $rustAvailable = $true
+        Write-Host "  [OK] Rust API: Running at $RustUrl" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "  [ERROR] Rust API: Not running at $RustUrl" -ForegroundColor Red
+    Write-Host "    Error: $($_.Exception.Message)" -ForegroundColor Gray
+}
+
+if (-not $standardAvailable -and -not $aotAvailable -and -not $javaGraalAvailable -and -not $rustAvailable) {
     Write-Host "`nError: No APIs are running. Please start them first." -ForegroundColor Red
     Write-Host "`nTip: Run the APIs using:" -ForegroundColor Yellow
     Write-Host "  .\build-and-run.ps1 -RunOnly" -ForegroundColor White
@@ -80,6 +93,10 @@ for ($i = 1; $i -le $WarmupRequests; $i++) {
         if ($javaGraalAvailable) {
             Invoke-RestMethod -Uri "$JavaGraalUrl/benchmark" -ErrorAction SilentlyContinue | Out-Null
             Invoke-RestMethod -Uri "$JavaGraalUrl/users" -ErrorAction SilentlyContinue | Out-Null
+        }
+        if ($rustAvailable) {
+            Invoke-RestMethod -Uri "$RustUrl/benchmark" -ErrorAction SilentlyContinue | Out-Null
+            Invoke-RestMethod -Uri "$RustUrl/users" -ErrorAction SilentlyContinue | Out-Null
         }
     } catch {}
 }
@@ -142,6 +159,26 @@ if ($javaGraalAvailable) {
             if ($i -eq 1) {
                 $json = $response | ConvertTo-Json -Depth 10
                 $javaGraalUsersSize = [System.Text.Encoding]::UTF8.GetByteCount($json)
+            }
+        } catch {
+            Write-Host "  Request $i failed" -ForegroundColor Red
+        }
+    }
+}
+
+if ($rustAvailable) {
+    Write-Host "Testing Rust API..." -ForegroundColor Green
+    $rustUsersTimes = @()
+    $rustUsersSize = 0
+    for ($i = 1; $i -le $TestRequests; $i++) {
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        try {
+            $response = Invoke-RestMethod -Uri "$RustUrl/users"
+            $sw.Stop()
+            $rustUsersTimes += $sw.ElapsedMilliseconds
+            if ($i -eq 1) {
+                $json = $response | ConvertTo-Json -Depth 10
+                $rustUsersSize = [System.Text.Encoding]::UTF8.GetByteCount($json)
             }
         } catch {
             Write-Host "  Request $i failed" -ForegroundColor Red
@@ -231,6 +268,32 @@ if ($javaGraalAvailable) {
     }
 }
 
+if ($rustAvailable) {
+    Write-Host "`nTesting Rust API..." -ForegroundColor Green
+    $rustBenchmarkTimes = @()
+    $rustMemory = 0
+    $rustPrimes = 0
+    $rustPid = 0
+    for ($i = 1; $i -le $TestRequests; $i++) {
+        try {
+            $result = Invoke-RestMethod -Uri "$RustUrl/benchmark"
+            $rustBenchmarkTimes += $result.executionTimeMs
+            $rustPid = $result.processId
+            $rustPrimes = $result.primesFound
+            Write-Host "  Request $i : $($result.executionTimeMs) ms" -ForegroundColor Gray
+        } catch {
+            Write-Host "  Request $i : Failed" -ForegroundColor Red
+        }
+    }
+    # Get actual process memory from PID
+    if ($rustPid -gt 0) {
+        $process = Get-Process -Id $rustPid -ErrorAction SilentlyContinue
+        if ($process) {
+            $rustMemory = $process.WorkingSet64 / 1MB
+        }
+    }
+}
+
 # Calculate statistics
 Write-Host "`n=== Results Summary ===" -ForegroundColor Cyan
 Write-Host ""
@@ -257,6 +320,13 @@ if ($javaGraalAvailable) {
     Write-Host "  Java GraalVM API:" -ForegroundColor White
     Write-Host "    Response time: $([math]::Round($javaGraalUsersAvg, 2)) ms (avg)" -ForegroundColor Gray
     Write-Host "    Response size: $([math]::Round($javaGraalUsersSize / 1024 / 1024, 2)) MB" -ForegroundColor Gray
+}
+
+if ($rustAvailable) {
+    $rustUsersAvg = ($rustUsersTimes | Measure-Object -Average).Average
+    Write-Host "  Rust API:" -ForegroundColor White
+    Write-Host "    Response time: $([math]::Round($rustUsersAvg, 2)) ms (avg)" -ForegroundColor Gray
+    Write-Host "    Response size: $([math]::Round($rustUsersSize / 1024 / 1024, 2)) MB" -ForegroundColor Gray
 }
 
 if ($standardAvailable -and $aotAvailable) {
@@ -297,6 +367,45 @@ if ($aotAvailable -and $javaGraalAvailable) {
         Write-Host "    Same speed" -ForegroundColor White
     }
 }
+
+if ($rustAvailable -and $standardAvailable) {
+    Write-Host "  Performance (Rust vs C# Standard):" -ForegroundColor White
+    if ($rustUsersAvg -lt $standardUsersAvg) {
+        $improvement = [math]::Round((($standardUsersAvg - $rustUsersAvg) / $standardUsersAvg * 100), 2)
+        Write-Host "    Rust is ${improvement}% faster" -ForegroundColor Green
+    } elseif ($rustUsersAvg -gt $standardUsersAvg) {
+        $degradation = [math]::Round((($rustUsersAvg - $standardUsersAvg) / $standardUsersAvg * 100), 2)
+        Write-Host "    Rust is ${degradation}% slower" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Same speed" -ForegroundColor White
+    }
+}
+
+if ($rustAvailable -and $aotAvailable) {
+    Write-Host "  Performance (Rust vs C# AOT):" -ForegroundColor White
+    if ($rustUsersAvg -lt $aotUsersAvg) {
+        $improvement = [math]::Round((($aotUsersAvg - $rustUsersAvg) / $aotUsersAvg * 100), 2)
+        Write-Host "    Rust is ${improvement}% faster" -ForegroundColor Green
+    } elseif ($rustUsersAvg -gt $aotUsersAvg) {
+        $degradation = [math]::Round((($rustUsersAvg - $aotUsersAvg) / $aotUsersAvg * 100), 2)
+        Write-Host "    Rust is ${degradation}% slower" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Same speed" -ForegroundColor White
+    }
+}
+
+if ($rustAvailable -and $javaGraalAvailable) {
+    Write-Host "  Performance (Rust vs Java GraalVM):" -ForegroundColor White
+    if ($rustUsersAvg -lt $javaGraalUsersAvg) {
+        $improvement = [math]::Round((($javaGraalUsersAvg - $rustUsersAvg) / $javaGraalUsersAvg * 100), 2)
+        Write-Host "    Rust is ${improvement}% faster" -ForegroundColor Green
+    } elseif ($rustUsersAvg -gt $javaGraalUsersAvg) {
+        $degradation = [math]::Round((($rustUsersAvg - $javaGraalUsersAvg) / $javaGraalUsersAvg * 100), 2)
+        Write-Host "    Rust is ${degradation}% slower" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Same speed" -ForegroundColor White
+    }
+}
 Write-Host ""
 
 # Benchmark statistics
@@ -324,6 +433,14 @@ if ($javaGraalAvailable) {
     Write-Host "    Execution time: $([math]::Round($javaGraalBenchAvg, 2)) ms (avg)" -ForegroundColor Gray
     Write-Host "    Memory usage:   $([math]::Round($javaGraalMemory, 2)) MB" -ForegroundColor Gray
     Write-Host "    Primes found:   $javaGraalPrimes" -ForegroundColor Gray
+}
+
+if ($rustAvailable) {
+    $rustBenchAvg = ($rustBenchmarkTimes | Measure-Object -Average).Average
+    Write-Host "  Rust API:" -ForegroundColor White
+    Write-Host "    Execution time: $([math]::Round($rustBenchAvg, 2)) ms (avg)" -ForegroundColor Gray
+    Write-Host "    Memory usage:   $([math]::Round($rustMemory, 2)) MB" -ForegroundColor Gray
+    Write-Host "    Primes found:   $rustPrimes" -ForegroundColor Gray
 }
 
 if ($standardAvailable -and $aotAvailable) {
@@ -400,6 +517,81 @@ if ($aotAvailable -and $javaGraalAvailable) {
         Write-Host "    Memory: Same memory usage" -ForegroundColor White
     }
 }
+
+if ($rustAvailable -and $standardAvailable) {
+    Write-Host "  Performance (Rust vs C# Standard):" -ForegroundColor White
+    if ($rustBenchAvg -lt $standardBenchAvg) {
+        $improvement = [math]::Round((($standardBenchAvg - $rustBenchAvg) / $standardBenchAvg * 100), 2)
+        Write-Host "    Speed:  Rust is ${improvement}% faster" -ForegroundColor Green
+    } elseif ($rustBenchAvg -gt $standardBenchAvg) {
+        $degradation = [math]::Round((($rustBenchAvg - $standardBenchAvg) / $standardBenchAvg * 100), 2)
+        Write-Host "    Speed:  Rust is ${degradation}% slower" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Speed:  Same speed" -ForegroundColor White
+    }
+
+    $memoryDiff = [math]::Round(($standardMemory - $rustMemory), 2)
+    $memoryPercent = [math]::Round((($standardMemory - $rustMemory) / $standardMemory * 100), 2)
+
+    if ($memoryDiff -gt 0) {
+        Write-Host "    Memory: Rust uses ${memoryDiff} MB less (${memoryPercent}% reduction)" -ForegroundColor Green
+    } elseif ($memoryDiff -lt 0) {
+        $memoryIncrease = [math]::Round((([math]::Abs($memoryDiff)) / $standardMemory * 100), 2)
+        Write-Host "    Memory: Rust uses $([math]::Abs($memoryDiff)) MB more (${memoryIncrease}% increase)" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Memory: Same memory usage" -ForegroundColor White
+    }
+}
+
+if ($rustAvailable -and $aotAvailable) {
+    Write-Host "  Performance (Rust vs C# AOT):" -ForegroundColor White
+    if ($rustBenchAvg -lt $aotBenchAvg) {
+        $improvement = [math]::Round((($aotBenchAvg - $rustBenchAvg) / $aotBenchAvg * 100), 2)
+        Write-Host "    Speed:  Rust is ${improvement}% faster" -ForegroundColor Green
+    } elseif ($rustBenchAvg -gt $aotBenchAvg) {
+        $degradation = [math]::Round((($rustBenchAvg - $aotBenchAvg) / $aotBenchAvg * 100), 2)
+        Write-Host "    Speed:  Rust is ${degradation}% slower" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Speed:  Same speed" -ForegroundColor White
+    }
+
+    $memoryDiff = [math]::Round(($aotMemory - $rustMemory), 2)
+    $memoryPercent = [math]::Round((($aotMemory - $rustMemory) / $aotMemory * 100), 2)
+
+    if ($memoryDiff -gt 0) {
+        Write-Host "    Memory: Rust uses ${memoryDiff} MB less (${memoryPercent}% reduction)" -ForegroundColor Green
+    } elseif ($memoryDiff -lt 0) {
+        $memoryIncrease = [math]::Round((([math]::Abs($memoryDiff)) / $aotMemory * 100), 2)
+        Write-Host "    Memory: Rust uses $([math]::Abs($memoryDiff)) MB more (${memoryIncrease}% increase)" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Memory: Same memory usage" -ForegroundColor White
+    }
+}
+
+if ($rustAvailable -and $javaGraalAvailable) {
+    Write-Host "  Performance (Rust vs Java GraalVM):" -ForegroundColor White
+    if ($rustBenchAvg -lt $javaGraalBenchAvg) {
+        $improvement = [math]::Round((($javaGraalBenchAvg - $rustBenchAvg) / $javaGraalBenchAvg * 100), 2)
+        Write-Host "    Speed:  Rust is ${improvement}% faster" -ForegroundColor Green
+    } elseif ($rustBenchAvg -gt $javaGraalBenchAvg) {
+        $degradation = [math]::Round((($rustBenchAvg - $javaGraalBenchAvg) / $javaGraalBenchAvg * 100), 2)
+        Write-Host "    Speed:  Rust is ${degradation}% slower" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Speed:  Same speed" -ForegroundColor White
+    }
+
+    $memoryDiff = [math]::Round(($javaGraalMemory - $rustMemory), 2)
+    $memoryPercent = [math]::Round((($javaGraalMemory - $rustMemory) / $javaGraalMemory * 100), 2)
+
+    if ($memoryDiff -gt 0) {
+        Write-Host "    Memory: Rust uses ${memoryDiff} MB less (${memoryPercent}% reduction)" -ForegroundColor Green
+    } elseif ($memoryDiff -lt 0) {
+        $memoryIncrease = [math]::Round((([math]::Abs($memoryDiff)) / $javaGraalMemory * 100), 2)
+        Write-Host "    Memory: Rust uses $([math]::Abs($memoryDiff)) MB more (${memoryIncrease}% increase)" -ForegroundColor Yellow
+    } else {
+        Write-Host "    Memory: Same memory usage" -ForegroundColor White
+    }
+}
 Write-Host ""
 
 # Detailed statistics table
@@ -465,6 +657,26 @@ if ($javaGraalAvailable) {
         Max = ($javaGraalBenchmarkTimes | Measure-Object -Maximum).Maximum
         Avg = [math]::Round(($javaGraalBenchmarkTimes | Measure-Object -Average).Average, 2)
         Median = [math]::Round(($javaGraalBenchmarkTimes | Sort-Object)[[math]::Floor($javaGraalBenchmarkTimes.Count / 2)], 2)
+    }
+}
+
+if ($rustAvailable) {
+    $table += [PSCustomObject]@{
+        API = "Rust"
+        Endpoint = "/users"
+        Min = ($rustUsersTimes | Measure-Object -Minimum).Minimum
+        Max = ($rustUsersTimes | Measure-Object -Maximum).Maximum
+        Avg = [math]::Round(($rustUsersTimes | Measure-Object -Average).Average, 2)
+        Median = [math]::Round(($rustUsersTimes | Sort-Object)[[math]::Floor($rustUsersTimes.Count / 2)], 2)
+    }
+
+    $table += [PSCustomObject]@{
+        API = "Rust"
+        Endpoint = "/benchmark"
+        Min = ($rustBenchmarkTimes | Measure-Object -Minimum).Minimum
+        Max = ($rustBenchmarkTimes | Measure-Object -Maximum).Maximum
+        Avg = [math]::Round(($rustBenchmarkTimes | Measure-Object -Average).Average, 2)
+        Median = [math]::Round(($rustBenchmarkTimes | Sort-Object)[[math]::Floor($rustBenchmarkTimes.Count / 2)], 2)
     }
 }
 
