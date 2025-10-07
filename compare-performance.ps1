@@ -137,6 +137,10 @@ if ($javaGraalAvailable) {
 Write-Host "`n=== Test 1: Users Endpoint (/users - 10k users) ===" -ForegroundColor Cyan
 Write-Host ""
 
+$standardUsersTimes = @()
+$standardUsersMemPriv = @()
+$standardUsersMemWSP = @()
+
 if ($standardAvailable) {
     Write-Host "Standard API (PID: $standardPid):" -ForegroundColor Green
     for ($i = 1; $i -le $TestRequests; $i++) {
@@ -144,7 +148,11 @@ if ($standardAvailable) {
         try {
             $response = Invoke-RestMethod -Uri "$StandardUrl/users"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($standardMetrics.PrivateBytes) MB | WSP: $($standardMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
+            $currentMetrics = Get-MemoryMetrics -ProcessId $standardPid
+            $standardUsersTimes += $sw.ElapsedMilliseconds
+            $standardUsersMemPriv += $currentMetrics.PrivateBytes
+            $standardUsersMemWSP += $currentMetrics.WorkingSetPrivate
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($currentMetrics.PrivateBytes) MB | WSP: $($currentMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -152,6 +160,10 @@ if ($standardAvailable) {
     }
     Write-Host ""
 }
+
+$aotUsersTimes = @()
+$aotUsersMemPriv = @()
+$aotUsersMemWSP = @()
 
 if ($aotAvailable) {
     Write-Host "AOT API (PID: $aotPid):" -ForegroundColor Green
@@ -160,7 +172,11 @@ if ($aotAvailable) {
         try {
             $response = Invoke-RestMethod -Uri "$AotUrl/users"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($aotMetrics.PrivateBytes) MB | WSP: $($aotMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
+            $currentMetrics = Get-MemoryMetrics -ProcessId $aotPid
+            $aotUsersTimes += $sw.ElapsedMilliseconds
+            $aotUsersMemPriv += $currentMetrics.PrivateBytes
+            $aotUsersMemWSP += $currentMetrics.WorkingSetPrivate
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($currentMetrics.PrivateBytes) MB | WSP: $($currentMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -169,6 +185,10 @@ if ($aotAvailable) {
     Write-Host ""
 }
 
+$javaGraalUsersTimes = @()
+$javaGraalUsersMemPriv = @()
+$javaGraalUsersMemWSP = @()
+
 if ($javaGraalAvailable) {
     Write-Host "Java GraalVM API (PID: $javaGraalPid):" -ForegroundColor Green
     for ($i = 1; $i -le $TestRequests; $i++) {
@@ -176,7 +196,11 @@ if ($javaGraalAvailable) {
         try {
             $response = Invoke-RestMethod -Uri "$JavaGraalUrl/users"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($javaGraalMetrics.PrivateBytes) MB | WSP: $($javaGraalMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
+            $currentMetrics = Get-MemoryMetrics -ProcessId $javaGraalPid
+            $javaGraalUsersTimes += $sw.ElapsedMilliseconds
+            $javaGraalUsersMemPriv += $currentMetrics.PrivateBytes
+            $javaGraalUsersMemWSP += $currentMetrics.WorkingSetPrivate
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Priv: $($currentMetrics.PrivateBytes) MB | WSP: $($currentMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -189,6 +213,10 @@ if ($javaGraalAvailable) {
 Write-Host "`n=== Test 2: CPU-Intensive Benchmark (/benchmark - Prime calculation) ===" -ForegroundColor Cyan
 Write-Host ""
 
+$standardBenchTimes = @()
+$standardBenchMemPriv = @()
+$standardBenchMemWSP = @()
+
 if ($standardAvailable) {
     Write-Host "Standard API (PID: $standardPid):" -ForegroundColor Green
     for ($i = 1; $i -le $TestRequests; $i++) {
@@ -196,7 +224,11 @@ if ($standardAvailable) {
         try {
             $result = Invoke-RestMethod -Uri "$StandardUrl/benchmark"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($standardMetrics.PrivateBytes) MB | WSP: $($standardMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
+            $currentMetrics = Get-MemoryMetrics -ProcessId $standardPid
+            $standardBenchTimes += $sw.ElapsedMilliseconds
+            $standardBenchMemPriv += $currentMetrics.PrivateBytes
+            $standardBenchMemWSP += $currentMetrics.WorkingSetPrivate
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($currentMetrics.PrivateBytes) MB | WSP: $($currentMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -204,6 +236,10 @@ if ($standardAvailable) {
     }
     Write-Host ""
 }
+
+$aotBenchTimes = @()
+$aotBenchMemPriv = @()
+$aotBenchMemWSP = @()
 
 if ($aotAvailable) {
     Write-Host "AOT API (PID: $aotPid):" -ForegroundColor Green
@@ -212,7 +248,11 @@ if ($aotAvailable) {
         try {
             $result = Invoke-RestMethod -Uri "$AotUrl/benchmark"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($aotMetrics.PrivateBytes) MB | WSP: $($aotMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
+            $currentMetrics = Get-MemoryMetrics -ProcessId $aotPid
+            $aotBenchTimes += $sw.ElapsedMilliseconds
+            $aotBenchMemPriv += $currentMetrics.PrivateBytes
+            $aotBenchMemWSP += $currentMetrics.WorkingSetPrivate
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($currentMetrics.PrivateBytes) MB | WSP: $($currentMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
@@ -221,6 +261,10 @@ if ($aotAvailable) {
     Write-Host ""
 }
 
+$javaGraalBenchTimes = @()
+$javaGraalBenchMemPriv = @()
+$javaGraalBenchMemWSP = @()
+
 if ($javaGraalAvailable) {
     Write-Host "Java GraalVM API (PID: $javaGraalPid):" -ForegroundColor Green
     for ($i = 1; $i -le $TestRequests; $i++) {
@@ -228,13 +272,95 @@ if ($javaGraalAvailable) {
         try {
             $result = Invoke-RestMethod -Uri "$JavaGraalUrl/benchmark"
             $sw.Stop()
-            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($javaGraalMetrics.PrivateBytes) MB | WSP: $($javaGraalMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
+            $currentMetrics = Get-MemoryMetrics -ProcessId $javaGraalPid
+            $javaGraalBenchTimes += $sw.ElapsedMilliseconds
+            $javaGraalBenchMemPriv += $currentMetrics.PrivateBytes
+            $javaGraalBenchMemWSP += $currentMetrics.WorkingSetPrivate
+            Write-Host "  Request $i : $($sw.ElapsedMilliseconds) ms | Primes: $($result.primesFound) | Priv: $($currentMetrics.PrivateBytes) MB | WSP: $($currentMetrics.WorkingSetPrivate) MB" -ForegroundColor Gray
         } catch {
             Write-Host "  Request $i : Failed" -ForegroundColor Red
         }
         Start-Sleep -Milliseconds 500
     }
     Write-Host ""
+}
+
+# Summary - Final memory after all tests
+Write-Host "`n=== Performance Summary ===" -ForegroundColor Cyan
+Write-Host ""
+
+function Get-Stats {
+    param([array]$values)
+    if ($values.Count -eq 0) { return $null }
+    $avg = ($values | Measure-Object -Average).Average
+    $min = ($values | Measure-Object -Minimum).Minimum
+    $max = ($values | Measure-Object -Maximum).Maximum
+    return [PSCustomObject]@{
+        Avg = [math]::Round($avg, 2)
+        Min = [math]::Round($min, 2)
+        Max = [math]::Round($max, 2)
+    }
+}
+
+Write-Host "Response Time Summary:" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  Users Endpoint (/users):" -ForegroundColor White
+if ($standardAvailable -and $standardUsersTimes.Count -gt 0) {
+    $stats = Get-Stats -values $standardUsersTimes
+    Write-Host "    Standard API: Avg=$($stats.Avg)ms, Min=$($stats.Min)ms, Max=$($stats.Max)ms" -ForegroundColor Gray
+}
+if ($aotAvailable -and $aotUsersTimes.Count -gt 0) {
+    $stats = Get-Stats -values $aotUsersTimes
+    Write-Host "    AOT API:      Avg=$($stats.Avg)ms, Min=$($stats.Min)ms, Max=$($stats.Max)ms" -ForegroundColor Gray
+}
+if ($javaGraalAvailable -and $javaGraalUsersTimes.Count -gt 0) {
+    $stats = Get-Stats -values $javaGraalUsersTimes
+    Write-Host "    Java GraalVM: Avg=$($stats.Avg)ms, Min=$($stats.Min)ms, Max=$($stats.Max)ms" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "  CPU Benchmark (/benchmark):" -ForegroundColor White
+if ($standardAvailable -and $standardBenchTimes.Count -gt 0) {
+    $stats = Get-Stats -values $standardBenchTimes
+    Write-Host "    Standard API: Avg=$($stats.Avg)ms, Min=$($stats.Min)ms, Max=$($stats.Max)ms" -ForegroundColor Gray
+}
+if ($aotAvailable -and $aotBenchTimes.Count -gt 0) {
+    $stats = Get-Stats -values $aotBenchTimes
+    Write-Host "    AOT API:      Avg=$($stats.Avg)ms, Min=$($stats.Min)ms, Max=$($stats.Max)ms" -ForegroundColor Gray
+}
+if ($javaGraalAvailable -and $javaGraalBenchTimes.Count -gt 0) {
+    $stats = Get-Stats -values $javaGraalBenchTimes
+    Write-Host "    Java GraalVM: Avg=$($stats.Avg)ms, Min=$($stats.Min)ms, Max=$($stats.Max)ms" -ForegroundColor Gray
+}
+
+Write-Host ""
+Write-Host "Final Memory After All Tests:" -ForegroundColor Yellow
+if ($standardAvailable) {
+    $finalMem = Get-MemoryMetrics -ProcessId $standardPid
+    if ($finalMem) {
+        Write-Host "  Standard API (PID: $standardPid)" -ForegroundColor Green
+        Write-Host "    Private Bytes:       $($finalMem.PrivateBytes) MB" -ForegroundColor Gray
+        Write-Host "    Working Set Private: $($finalMem.WorkingSetPrivate) MB" -ForegroundColor Gray
+        Write-Host ""
+    }
+}
+if ($aotAvailable) {
+    $finalMem = Get-MemoryMetrics -ProcessId $aotPid
+    if ($finalMem) {
+        Write-Host "  AOT API (PID: $aotPid)" -ForegroundColor Green
+        Write-Host "    Private Bytes:       $($finalMem.PrivateBytes) MB" -ForegroundColor Gray
+        Write-Host "    Working Set Private: $($finalMem.WorkingSetPrivate) MB" -ForegroundColor Gray
+        Write-Host ""
+    }
+}
+if ($javaGraalAvailable) {
+    $finalMem = Get-MemoryMetrics -ProcessId $javaGraalPid
+    if ($finalMem) {
+        Write-Host "  Java GraalVM API (PID: $javaGraalPid)" -ForegroundColor Green
+        Write-Host "    Private Bytes:       $($finalMem.PrivateBytes) MB" -ForegroundColor Gray
+        Write-Host "    Working Set Private: $($finalMem.WorkingSetPrivate) MB" -ForegroundColor Gray
+        Write-Host ""
+    }
 }
 
 Write-Host "Done!" -ForegroundColor Green
