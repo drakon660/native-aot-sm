@@ -7,7 +7,9 @@
       "Bash(curl:*)",
       "Bash(Get-ChildItem -Path \"F:\\src\\native-aot-sm\" -Directory)",
       "Bash(Where-Object { $_ame -eq \"RustApi\" })",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(dir:*)",
+      "Bash(./AotMinimalApi.exe)"
     ],
     "deny": [],
     "ask": []

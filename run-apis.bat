@@ -15,6 +15,11 @@ if not exist "%PUBLISH_PATH%" (
     exit /b 1
 )
 
+REM Copy startup scripts to publish directory
+echo Copying startup scripts...
+copy /Y "%~dp0start-standard.bat" "%PUBLISH_PATH%\start-standard.bat" >nul
+copy /Y "%~dp0start-aot.bat" "%PUBLISH_PATH%\start-aot.bat" >nul
+
 REM Start StandardMinimalApi
 if exist "%PUBLISH_PATH%\start-standard.bat" (
     echo Starting StandardMinimalApi on http://localhost:5000
